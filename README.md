@@ -1,10 +1,14 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html>
 <head>
   <title>Path Innovators HR Dashboard</title>
 
-  <!-- Poppins Font -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     * {
@@ -29,27 +33,35 @@
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      display: block;
-      margin: 0 auto 8px;
     }
 
-    .header h2 {
-      margin: 0;
-      font-size: 20px;
+    .header h1 {
+      margin: 5px 0 0;
+      font-size: 22px;
     }
 
-    /* MAIN CONTAINER */
+    /* CONTAINER */
     .container {
       max-width: 1000px;
       margin: 15px auto;
       background: white;
       padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    /* FORM ELEMENTS */
-    input, select, textarea, button {
+    h3 {
+      margin-top: 10px;
+    }
+
+    /* FORM */
+    .flex {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input, select, button, textarea {
       width: 100%;
       padding: 10px;
       margin: 6px 0;
@@ -63,40 +75,22 @@
       color: white;
       border: none;
       cursor: pointer;
+      transition: 0.3s;
     }
 
-    /* BUTTON GROUP */
-    .btn-group {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .btn-group button {
-      flex: 1;
-    }
-
-    /* SELECT ALL */
-    .select-all {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 10px 0;
-    }
-
-    .select-all input {
-      width: auto;
+    button:hover {
+      background: #001f5c;
     }
 
     /* TABLE */
-    .table-container {
+    .table-wrapper {
       overflow-x: auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 600px;
+      min-width: 500px;
     }
 
     th {
@@ -110,6 +104,12 @@
       text-align: center;
     }
 
+    img.profile {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+    }
+
     .sent { color: green; font-weight: bold; }
     .pending { color: red; }
 
@@ -117,17 +117,27 @@
       text-align: center;
       padding: 10px;
       color: gray;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     /* MOBILE */
-    @media(max-width:600px){
-      .header h2 {
-        font-size: 16px;
+    @media(max-width: 600px){
+
+      .header h1 {
+        font-size: 18px;
       }
 
-      table {
-        font-size: 12px;
+      .container {
+        margin: 10px;
+        padding: 10px;
+      }
+
+      button {
+        font-size: 13px;
+      }
+
+      textarea {
+        font-size: 13px;
       }
     }
   </style>
@@ -135,50 +145,51 @@
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
   <img src="logo.png">
-  <h2>Path Innovators</h2>
+  <h1>Path Innovators</h1>
 </div>
 
 <div class="container">
 
   <h3>📱 Manual Send</h3>
-  <input id="manualName" placeholder="Candidate Name">
-  <input id="manualPhone" placeholder="Phone (91XXXXXXXXXX)">
+
+  <div class="flex">
+    <input id="manualName" placeholder="Candidate Name">
+    <input id="manualPhone" placeholder="Phone (91XXXXXXXXXX)">
+  </div>
+
   <button onclick="sendManual()">Send</button>
 
   <hr>
 
-  <h3>📊 Live Candidate Data</h3>
+  <h3>📊 Upload Excel</h3>
+  <input type="file" id="upload">
 
   <input type="text" id="search" placeholder="Search Candidate..." onkeyup="searchData()">
 
-  <!-- SELECT ALL -->
-  <div class="select-all">
-    <input type="checkbox" id="selectAll" onclick="selectAll(this)">
-    <label for="selectAll">Select All</label>
-  </div>
+  <label>
+    <input type="checkbox" onclick="selectAll(this)"> Select All
+  </label>
 
-  <!-- TABLE -->
-  <div class="table-container">
+  <div class="table-wrapper">
     <table id="table"></table>
   </div>
 
   <h3>💬 Message</h3>
+
   <select id="template">
     <option value="interview">Interview</option>
     <option value="offer">Offer</option>
     <option value="reject">Rejection</option>
   </select>
 
-  <textarea id="messageBox" rows="4"></textarea>
+  <textarea id="messageBox" rows="5"></textarea>
 
-  <!-- BUTTON GROUP -->
-  <div class="btn-group">
+  <div class="flex">
     <button onclick="applyTemplate()">Apply</button>
     <button onclick="previewMessage()">Preview</button>
-    <button onclick="sendBulk()">Send</button>
+    <button onclick="sendBulk()">Send Selected</button>
   </div>
 
 </div>
@@ -189,29 +200,23 @@
 let data = [];
 let filteredData = [];
 
-// GOOGLE SHEETS
-fetch("https://opensheet.elk.sh/YOUR_SHEET_ID/Sheet1")
-  .then(res => res.json())
-  .then(res => {
-    data = res;
+document.getElementById('upload').addEventListener('change', function(e){
+  let reader = new FileReader();
+  reader.onload = function(e){
+    let workbook = XLSX.read(e.target.result, {type:'binary'});
+    let sheet = workbook.Sheets[workbook.SheetNames[0]];
+    data = XLSX.utils.sheet_to_json(sheet);
     data.forEach(d => d.status = "Pending");
     filteredData = data;
     displayTable();
-  });
+  };
+  reader.readAsBinaryString(e.target.files[0]);
+});
 
-// TABLE
 function displayTable(){
   let table = document.getElementById("table");
 
-  table.innerHTML = `
-    <tr>
-      <th>Select</th>
-      <th>Name</th>
-      <th>Phone</th>
-      <th>Email</th>
-      <th>Status</th>
-    </tr>
-  `;
+  table.innerHTML = "<tr><th>Select</th><th>Name</th><th>Phone</th><th>Status</th></tr>";
 
   filteredData.forEach((row, index)=>{
     table.innerHTML += `
@@ -219,49 +224,41 @@ function displayTable(){
         <td><input type="checkbox" class="select" data-index="${index}"></td>
         <td>${row.Name}</td>
         <td>${row.Phone}</td>
-        <td>${row.Email}</td>
         <td class="${row.status === 'Sent' ? 'sent' : 'pending'}">${row.status}</td>
       </tr>
     `;
   });
 }
 
-// SEARCH
 function searchData(){
   let value = document.getElementById("search").value.toLowerCase();
   filteredData = data.filter(d => d.Name.toLowerCase().includes(value));
   displayTable();
 }
 
-// SELECT ALL
 function selectAll(source){
   document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
 }
 
-// TEMPLATE
 function applyTemplate(){
   let type = document.getElementById("template").value;
-
   let msg = "";
+
   if(type === "interview"){
     msg = "Hello {name}, You are shortlisted for an interview at Path Innovators.";
-  }
-  else if(type === "offer"){
+  } else if(type === "offer"){
     msg = "Hello {name}, Congratulations! You are selected at Path Innovators.";
-  }
-  else{
-    msg = "Hello {name}, Thank you for applying. Currently we are not proceeding.";
+  } else {
+    msg = "Hello {name}, Thank you for applying.";
   }
 
   document.getElementById("messageBox").value = msg;
 }
 
-// PREVIEW
 function previewMessage(){
   alert(document.getElementById("messageBox").value);
 }
 
-// BULK SEND
 function sendBulk(){
   let selected = document.querySelectorAll(".select:checked");
   let template = document.getElementById("messageBox").value;
@@ -277,11 +274,10 @@ function sendBulk(){
       window.open(url, "_blank");
       person.status = "Sent";
       displayTable();
-    }, i * 1500);
+    }, i * 1200);
   });
 }
 
-// MANUAL
 function sendManual(){
   let name = document.getElementById("manualName").value;
   let phone = document.getElementById("manualPhone").value;
