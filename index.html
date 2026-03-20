@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Path Innovators HR Dashboard</title>
+
+  <!-- Poppins Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    * {
+      font-family: 'Poppins', sans-serif;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f6f9;
+    }
+
+    /* HEADER */
+    .header {
+      background: navy;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .header img {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      display: block;
+      margin: 0 auto 10px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      background: navy;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #001f5c;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th {
+      background: navy;
+      color: white;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    img.profile {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .sent { color: green; font-weight: bold; }
+    .pending { color: red; }
+
+    footer {
+      text-align: center;
+      padding: 10px;
+      color: gray;
+      font-size: 14px;
+    }
+
+    /* MOBILE RESPONSIVE */
+    @media(max-width: 600px){
+      .header h1 {
+        font-size: 18px;
+      }
+
+      table, th, td {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="logo.png">
+  <h1>Path Innovators</h1>
+</div>
+
+<!-- MAIN BOX -->
+<div class="container">
+
+  <h3>📱 Manual Send</h3>
+  <input id="manualName" placeholder="Candidate Name">
+  <input id="manualPhone" placeholder="Phone (91XXXXXXXXXX)">
+  <button onclick="sendManual()">Send</button>
+
+  <hr>
+
+  <h3>📊 Upload Excel</h3>
+  <input type="file" id="upload">
+
+  <input type="text" id="search" placeholder="Search Candidate..." onkeyup="searchData()">
+
+  <label><input type="checkbox" onclick="selectAll(this)"> Select All</label>
+
+  <table id="table"></table>
+
+  <h3>💬 Message</h3>
+  <select id="template">
+    <option value="interview">Interview</option>
+    <option value="offer">Offer</option>
+    <option value="reject">Rejection</option>
+  </select>
+
+  <textarea id="messageBox" rows="5"></textarea>
+
+  <button onclick="applyTemplate()">Apply Template</button>
+  <button onclick="previewMessage()">Preview</button>
+  <button onclick="sendBulk()">Send Selected</button>
+
+</div>
+
+<footer>© Path Innovators 2026</footer>
+
+<script>
+let data = [];
+let filteredData = [];
+
+// LOAD EXCEL
+document.getElementById('upload').addEventListener('change', function(e){
+  let reader = new FileReader();
+  reader.onload = function(e){
+    let workbook = XLSX.read(e.target.result, {type:'binary'});
+    let sheet = workbook.Sheets[workbook.SheetNames[0]];
+    data = XLSX.utils.sheet_to_json(sheet);
+    data.forEach(d => d.status = "Pending");
+    filteredData = data;
+    displayTable();
+  };
+  reader.readAsBinaryString(e.target.files[0]);
+});
+
+// DISPLAY TABLE
+function displayTable(){
+  let table = document.getElementById("table");
+
+  table.innerHTML = "<tr><th>Select</th><th>Photo</th><th>Name</th><th>Phone</th><th>Status</th></tr>";
+
+  filteredData.forEach((row, index)=>{
+    let photo = row.Photo || "https://via.placeholder.com/40";
+
+    table.innerHTML += `
+      <tr>
+        <td><input type="checkbox" class="select" data-index="${index}"></td>
+        <td><img src="${photo}" class="profile"></td>
+        <td>${row.Name}</td>
+        <td>${row.Phone}</td>
+        <td class="${row.status === 'Sent' ? 'sent' : 'pending'}">${row.status}</td>
+      </tr>
+    `;
+  });
+}
+
+// SEARCH
+function searchData(){
+  let value = document.getElementById("search").value.toLowerCase();
+  filteredData = data.filter(d => d.Name.toLowerCase().includes(value));
+  displayTable();
+}
+
+// SELECT ALL
+function selectAll(source){
+  document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
+}
+
+// TEMPLATE
+function applyTemplate(){
+  let type = document.getElementById("template").value;
+  let msg = "";
+
+  if(type === "interview"){
+    msg = "Hello {name}, You are shortlisted for an interview at Path Innovators.";
+  }
+  else if(type === "offer"){
+    msg = "Hello {name}, Congratulations! You are selected at Path Innovators.";
+  }
+  else{
+    msg = "Hello {name}, Thank you for applying. Currently we are not proceeding.";
+  }
+
+  document.getElementById("messageBox").value = msg;
+}
+
+// PREVIEW
+function previewMessage(){
+  alert(document.getElementById("messageBox").value);
+}
+
+// BULK SEND
+function sendBulk(){
+  let selected = document.querySelectorAll(".select:checked");
+  let template = document.getElementById("messageBox").value;
+
+  selected.forEach((cb, i)=>{
+    let person = filteredData[cb.dataset.index];
+    let phone = person.Phone.toString().replace(/[^0-9]/g,"");
+    let msg = template.replace("{name}", person.Name);
+
+    let url = "https://api.whatsapp.com/send?phone=" + phone + "&text=" + encodeURIComponent(msg);
+
+    setTimeout(()=>{
+      window.open(url, "_blank");
+      person.status = "Sent";
+      displayTable();
+    }, i * 1500);
+  });
+}
+
+// MANUAL SEND
+function sendManual(){
+  let name = document.getElementById("manualName").value;
+  let phone = document.getElementById("manualPhone").value;
+
+  if(!name || !phone){
+    alert("Enter details");
+    return;
+  }
+
+  phone = phone.replace(/[^0-9]/g,"");
+
+  let msg = document.getElementById("messageBox").value.replace("{name}", name);
+
+  let url = "https://api.whatsapp.com/send?phone=" + phone + "&text=" + encodeURIComponent(msg);
+
+  window.open(url, "_blank");
+}
+</script>
+
+</body>
+</html>
