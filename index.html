@@ -6,8 +6,6 @@
   <!-- Poppins Font -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
   <style>
     * {
       font-family: 'Poppins', sans-serif;
@@ -24,36 +22,37 @@
       background: navy;
       color: white;
       text-align: center;
-      padding: 20px;
+      padding: 15px;
     }
 
     .header img {
-      width: 70px;
-      height: 70px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
       display: block;
-      margin: 0 auto 10px;
+      margin: 0 auto 8px;
     }
 
-    .header h1 {
+    .header h2 {
       margin: 0;
-      font-size: 24px;
+      font-size: 20px;
     }
 
     /* MAIN CONTAINER */
     .container {
       max-width: 1000px;
-      margin: 20px auto;
+      margin: 15px auto;
       background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    input, select, button, textarea {
+    /* FORM ELEMENTS */
+    input, select, textarea, button {
       width: 100%;
       padding: 10px;
-      margin: 8px 0;
+      margin: 6px 0;
       border-radius: 6px;
       border: 1px solid #ccc;
       font-size: 14px;
@@ -66,14 +65,38 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #001f5c;
+    /* BUTTON GROUP */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-group button {
+      flex: 1;
+    }
+
+    /* SELECT ALL */
+    .select-all {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .select-all input {
+      width: auto;
+    }
+
+    /* TABLE */
+    .table-container {
+      overflow-x: auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      min-width: 600px;
     }
 
     th {
@@ -87,12 +110,6 @@
       text-align: center;
     }
 
-    img.profile {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-    }
-
     .sent { color: green; font-weight: bold; }
     .pending { color: red; }
 
@@ -100,16 +117,16 @@
       text-align: center;
       padding: 10px;
       color: gray;
-      font-size: 14px;
+      font-size: 13px;
     }
 
-    /* MOBILE RESPONSIVE */
-    @media(max-width: 600px){
-      .header h1 {
-        font-size: 18px;
+    /* MOBILE */
+    @media(max-width:600px){
+      .header h2 {
+        font-size: 16px;
       }
 
-      table, th, td {
+      table {
         font-size: 12px;
       }
     }
@@ -121,10 +138,9 @@
 <!-- HEADER -->
 <div class="header">
   <img src="logo.png">
-  <h1>Path Innovators</h1>
+  <h2>Path Innovators</h2>
 </div>
 
-<!-- MAIN BOX -->
 <div class="container">
 
   <h3>📱 Manual Send</h3>
@@ -134,14 +150,20 @@
 
   <hr>
 
-  <h3>📊 Upload Excel</h3>
-  <input type="file" id="upload">
+  <h3>📊 Live Candidate Data</h3>
 
   <input type="text" id="search" placeholder="Search Candidate..." onkeyup="searchData()">
 
-  <label><input type="checkbox" onclick="selectAll(this)"> Select All</label>
+  <!-- SELECT ALL -->
+  <div class="select-all">
+    <input type="checkbox" id="selectAll" onclick="selectAll(this)">
+    <label for="selectAll">Select All</label>
+  </div>
 
-  <table id="table"></table>
+  <!-- TABLE -->
+  <div class="table-container">
+    <table id="table"></table>
+  </div>
 
   <h3>💬 Message</h3>
   <select id="template">
@@ -150,11 +172,14 @@
     <option value="reject">Rejection</option>
   </select>
 
-  <textarea id="messageBox" rows="5"></textarea>
+  <textarea id="messageBox" rows="4"></textarea>
 
-  <button onclick="applyTemplate()">Apply Template</button>
-  <button onclick="previewMessage()">Preview</button>
-  <button onclick="sendBulk()">Send Selected</button>
+  <!-- BUTTON GROUP -->
+  <div class="btn-group">
+    <button onclick="applyTemplate()">Apply</button>
+    <button onclick="previewMessage()">Preview</button>
+    <button onclick="sendBulk()">Send</button>
+  </div>
 
 </div>
 
@@ -164,35 +189,37 @@
 let data = [];
 let filteredData = [];
 
-// LOAD EXCEL
-document.getElementById('upload').addEventListener('change', function(e){
-  let reader = new FileReader();
-  reader.onload = function(e){
-    let workbook = XLSX.read(e.target.result, {type:'binary'});
-    let sheet = workbook.Sheets[workbook.SheetNames[0]];
-    data = XLSX.utils.sheet_to_json(sheet);
+// GOOGLE SHEETS
+fetch("https://opensheet.elk.sh/YOUR_SHEET_ID/Sheet1")
+  .then(res => res.json())
+  .then(res => {
+    data = res;
     data.forEach(d => d.status = "Pending");
     filteredData = data;
     displayTable();
-  };
-  reader.readAsBinaryString(e.target.files[0]);
-});
+  });
 
-// DISPLAY TABLE
+// TABLE
 function displayTable(){
   let table = document.getElementById("table");
 
-  table.innerHTML = "<tr><th>Select</th><th>Photo</th><th>Name</th><th>Phone</th><th>Status</th></tr>";
+  table.innerHTML = `
+    <tr>
+      <th>Select</th>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Email</th>
+      <th>Status</th>
+    </tr>
+  `;
 
   filteredData.forEach((row, index)=>{
-    let photo = row.Photo || "https://via.placeholder.com/40";
-
     table.innerHTML += `
       <tr>
         <td><input type="checkbox" class="select" data-index="${index}"></td>
-        <td><img src="${photo}" class="profile"></td>
         <td>${row.Name}</td>
         <td>${row.Phone}</td>
+        <td>${row.Email}</td>
         <td class="${row.status === 'Sent' ? 'sent' : 'pending'}">${row.status}</td>
       </tr>
     `;
@@ -214,8 +241,8 @@ function selectAll(source){
 // TEMPLATE
 function applyTemplate(){
   let type = document.getElementById("template").value;
-  let msg = "";
 
+  let msg = "";
   if(type === "interview"){
     msg = "Hello {name}, You are shortlisted for an interview at Path Innovators.";
   }
@@ -254,7 +281,7 @@ function sendBulk(){
   });
 }
 
-// MANUAL SEND
+// MANUAL
 function sendManual(){
   let name = document.getElementById("manualName").value;
   let phone = document.getElementById("manualPhone").value;
