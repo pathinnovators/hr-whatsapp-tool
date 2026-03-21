@@ -27,6 +27,7 @@ button:hover{background:#001f5c;}
 
 .next-btn{background:green;}
 .clear-btn{background:red;}
+.download-btn{background:purple;}
 
 .table-container{overflow-x:auto;}
 
@@ -37,10 +38,8 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 .sent{color:green;font-weight:bold;}
 .pending{color:red;}
 
-/* Mobile */
 @media(max-width:600px){
 .header h1{font-size:18px;}
-input,button,textarea{font-size:13px;}
 }
 </style>
 </head>
@@ -83,32 +82,37 @@ input,button,textarea{font-size:13px;}
 <button onclick="applyTemplate()">Apply Template</button>
 <button onclick="sendBulk()">📤 Start Sending</button>
 <button class="next-btn" onclick="sendNext()">➡️ Next Candidate</button>
-<button class="clear-btn" onclick="clearData()">🗑 Clear Data</button>
+<button class="download-btn" onclick="downloadReport()">📥 Download Report</button>
+<button class="clear-btn" onclick="clearData()">🗑 Clear Screen Data</button>
+
+<h3>📜 Sent History</h3>
+<div class="table-container">
+<table id="historyTable"></table>
+</div>
 
 </div>
 
 <script>
 
 let data = [];
+let historyData = [];
 let queue = [];
 let currentIndex = 0;
 
-// 🔹 LOAD DATA FROM LOCAL STORAGE
-window.onload = function(){
-let saved = localStorage.getItem("candidates");
+const API_URL = "https://script.google.com/macros/s/AKfycbwz7-W8m6SBMZzQuLUbXs1S4PxaPDUjLUtXvZIxVm3EuVs4KIWG4mdBG2wPNa0hFWZf/exec";
 
-if(saved){
-data = JSON.parse(saved);
-displayTable();
-}
-}
 
-// 🔹 SAVE FUNCTION
-function saveData(){
-localStorage.setItem("candidates", JSON.stringify(data));
+// ================= FORMAT PHONE =================
+function formatPhone(phone){
+phone = phone.toString().replace(/[^0-9]/g,"");
+if(phone.length === 10){
+phone = "91" + phone;
+}
+return phone;
 }
 
-// Upload Excel
+
+// ================= EXCEL =================
 document.getElementById('upload').addEventListener('change', function(e){
 let reader = new FileReader();
 
@@ -118,51 +122,55 @@ let sheet = workbook.Sheets[workbook.SheetNames[0]];
 let json = XLSX.utils.sheet_to_json(sheet);
 
 json.forEach(row=>{
+let phone = formatPhone(row.Phone || row.phone);
+
+if(phone && !data.some(d => d.Phone === phone)){
 data.push({
 Name: row.Name || row.name || "Unknown",
-Phone: row.Phone || row.phone || "",
+Phone: phone,
 status: "Pending"
 });
+}
 });
 
 displayTable();
-saveData();
 };
 
 reader.readAsBinaryString(e.target.files[0]);
 });
 
-// Manual Add
+
+// ================= MANUAL =================
 function addManual(){
 let name = document.getElementById("manualName").value.trim();
-let phone = document.getElementById("manualPhone").value.trim();
+let phone = formatPhone(document.getElementById("manualPhone").value);
 
 if(!name || !phone){
-alert("Please enter name and phone!");
+alert("Enter name & phone");
 return;
 }
 
-// Auto add +91 if missing
-if(phone.length === 10){
-phone = "91" + phone;
+if(data.some(d => d.Phone === phone)){
+alert("Candidate exists!");
+return;
 }
 
-data.push({
-Name: name,
-Phone: phone,
-status: "Pending"
-});
-
-document.getElementById("manualName").value = "";
-document.getElementById("manualPhone").value = "";
-
+data.push({Name:name, Phone:phone, status:"Pending"});
 displayTable();
-saveData();
+
+document.getElementById("manualName").value="";
+document.getElementById("manualPhone").value="";
 }
 
-// Display Table
+
+// ================= DISPLAY =================
 function displayTable(){
 let table = document.getElementById("table");
+
+if(data.length === 0){
+table.innerHTML = "<tr><td colspan='4'>No Data</td></tr>";
+return;
+}
 
 table.innerHTML = "<tr><th>Select</th><th>Name</th><th>Phone</th><th>Status</th></tr>";
 
@@ -177,56 +185,38 @@ table.innerHTML += `
 });
 }
 
-// Search
-function searchData(){
-let value = document.getElementById("search").value.toLowerCase();
 
-let rows = document.querySelectorAll("#table tr");
+// ================= HISTORY DISPLAY =================
+function displayHistory(){
+let table = document.getElementById("historyTable");
 
-rows.forEach((row,i)=>{
-if(i===0) return;
+if(historyData.length === 0){
+table.innerHTML = "<tr><td>No History Yet</td></tr>";
+return;
+}
 
-let name = row.cells[1].innerText.toLowerCase();
-row.style.display = name.includes(value) ? "" : "none";
+table.innerHTML = "<tr><th>Name</th><th>Phone</th><th>Message</th><th>Date</th></tr>";
+
+historyData.forEach(row=>{
+table.innerHTML += `
+<tr>
+<td>${row.name}</td>
+<td>${row.phone}</td>
+<td>${row.message}</td>
+<td>${row.date}</td>
+</tr>`;
 });
 }
 
-// Select All
-function selectAll(source){
-document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
-}
 
-// Template
-function applyTemplate(){
-let type = document.getElementById("template").value;
-let msg="";
-
-if(type==="interview"){
-msg="Hello {name}, You are shortlisted for an interview at Path Innovators.";
-}
-else if(type==="offer"){
-msg="Hello {name}, Congratulations! You are selected at Path Innovators.";
-}
-else{
-msg="Hello {name}, Thank you for applying to Path Innovators.";
-}
-
-document.getElementById("messageBox").value = msg;
-}
-
-// Start Sending
+// ================= SEND =================
 function sendBulk(){
 
 let selected = document.querySelectorAll(".select:checked");
 let template = document.getElementById("messageBox").value;
 
 if(selected.length === 0){
-alert("Please select candidates!");
-return;
-}
-
-if(!template){
-alert("Message is empty!");
+alert("Select candidates");
 return;
 }
 
@@ -234,54 +224,111 @@ queue = [];
 
 selected.forEach(cb=>{
 let person = data[cb.dataset.index];
-
-let phone = person.Phone.toString().replace(/[^0-9]/g,"");
-
-if(phone){
 let msg = template.replace("{name}", person.Name);
-queue.push({phone, msg, person});
-}
+queue.push({phone: person.Phone, msg, person});
 });
 
 currentIndex = 0;
 
-alert("👉 Send message in WhatsApp, then click NEXT Candidate");
-
 sendCurrent();
 }
 
-// Send Current
+
 function sendCurrent(){
 
 if(currentIndex >= queue.length){
-alert("✅ All messages completed");
+alert("All messages done");
 return;
 }
 
 let item = queue[currentIndex];
 
-let url = `https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`;
+window.open(`https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`, "_blank");
 
-window.open(url, "_blank");
-
-// Update status
+// update UI
 item.person.status = "Sent";
 displayTable();
-saveData();
+
+// save history locally
+let record = {
+name: item.person.Name,
+phone: item.phone,
+message: item.msg,
+date: new Date().toLocaleString()
+};
+
+historyData.push(record);
+displayHistory();
+
+// send to sheet
+fetch(API_URL, {
+method: "POST",
+headers: {"Content-Type": "application/json"},
+body: JSON.stringify({...record, status:"Sent"})
+});
+
 }
 
-// Next Button
+
 function sendNext(){
 currentIndex++;
 sendCurrent();
 }
 
-// Clear Data
+
+// ================= DOWNLOAD =================
+function downloadReport(){
+
+if(historyData.length === 0){
+alert("No data to download");
+return;
+}
+
+let ws = XLSX.utils.json_to_sheet(historyData);
+let wb = XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb, ws, "Report");
+
+XLSX.writeFile(wb, "HR_Report.xlsx");
+}
+
+
+// ================= SEARCH =================
+function searchData(){
+let val = document.getElementById("search").value.toLowerCase();
+
+document.querySelectorAll("#table tr").forEach((row,i)=>{
+if(i===0) return;
+row.style.display = row.cells[1].innerText.toLowerCase().includes(val) ? "" : "none";
+});
+}
+
+
+// ================= SELECT =================
+function selectAll(source){
+document.querySelectorAll(".select").forEach(cb=>cb.checked=source.checked);
+}
+
+
+// ================= TEMPLATE =================
+function applyTemplate(){
+let msgs = {
+interview:"Hello {name}, You are shortlisted for interview.",
+offer:"Hello {name}, You are selected.",
+reject:"Hello {name}, Thank you for applying."
+};
+
+document.getElementById("messageBox").value = msgs[document.getElementById("template").value];
+}
+
+
+// ================= CLEAR =================
 function clearData(){
-if(confirm("Are you sure you want to delete all data?")){
-localStorage.removeItem("candidates");
-data = [];
+if(confirm("Clear screen data?")){
+data=[];
+historyData=[];
 displayTable();
+displayHistory();
 }
 }
 
