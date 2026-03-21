@@ -100,7 +100,7 @@ let queue = [];
 let currentIndex = 0;
 
 // 🔴 PASTE YOUR LATEST DEPLOYED URL HERE
-const API_URL = "https://script.google.com/macros/s/AKfycbwz7-W8m6SBMZzQuLUbXs1S4PxaPDUjLUtXvZIxVm3EuVs4KIWG4mdBG2wPNa0hFWZf/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz5aNFzMMo8hk5iIsMHMJ8L1OHUiCHzS3pEXDYPm-9UtVQy7XRvbnAWSEoHKQ_Z5-J4kA/exec";
 
 
 // ================= FORMAT PHONE =================
