@@ -99,7 +99,8 @@ let historyData = [];
 let queue = [];
 let currentIndex = 0;
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyzF_MrRHZNXPHq21T5c49BCzL0Aj6QDXDcTiNbRYDe076O0hfnWYoRjsUtB131g4F_/exec";
+// 🔴 PASTE YOUR LATEST DEPLOYED URL HERE
+const API_URL = "https://script.google.com/macros/s/AKfycbwz7-W8m6SBMZzQuLUbXs1S4PxaPDUjLUtXvZIxVm3EuVs4KIWG4mdBG2wPNa0hFWZf/exec";
 
 
 // ================= FORMAT PHONE =================
@@ -112,7 +113,7 @@ return phone;
 }
 
 
-// ================= EXCEL =================
+// ================= EXCEL UPLOAD =================
 document.getElementById('upload').addEventListener('change', function(e){
 let reader = new FileReader();
 
@@ -140,7 +141,7 @@ reader.readAsBinaryString(e.target.files[0]);
 });
 
 
-// ================= MANUAL =================
+// ================= MANUAL ENTRY =================
 function addManual(){
 let name = document.getElementById("manualName").value.trim();
 let phone = formatPhone(document.getElementById("manualPhone").value);
@@ -151,7 +152,7 @@ return;
 }
 
 if(data.some(d => d.Phone === phone)){
-alert("Candidate exists!");
+alert("Candidate already exists!");
 return;
 }
 
@@ -163,12 +164,12 @@ document.getElementById("manualPhone").value="";
 }
 
 
-// ================= DISPLAY =================
+// ================= DISPLAY TABLE =================
 function displayTable(){
 let table = document.getElementById("table");
 
 if(data.length === 0){
-table.innerHTML = "<tr><td colspan='4'>No Data</td></tr>";
+table.innerHTML = "<tr><td colspan='4'>No Data Available</td></tr>";
 return;
 }
 
@@ -209,6 +210,35 @@ table.innerHTML += `
 }
 
 
+// ================= SEARCH =================
+function searchData(){
+let val = document.getElementById("search").value.toLowerCase();
+
+document.querySelectorAll("#table tr").forEach((row,i)=>{
+if(i===0) return;
+row.style.display = row.cells[1].innerText.toLowerCase().includes(val) ? "" : "none";
+});
+}
+
+
+// ================= SELECT =================
+function selectAll(source){
+document.querySelectorAll(".select").forEach(cb=>cb.checked=source.checked);
+}
+
+
+// ================= TEMPLATE =================
+function applyTemplate(){
+let msgs = {
+interview:"Hello {name}, You are shortlisted for interview at Path Innovators.",
+offer:"Hello {name}, Congratulations! You are selected at Path Innovators.",
+reject:"Hello {name}, Thank you for applying to Path Innovators."
+};
+
+document.getElementById("messageBox").value = msgs[document.getElementById("template").value];
+}
+
+
 // ================= SEND =================
 function sendBulk(){
 
@@ -230,6 +260,8 @@ queue.push({phone: person.Phone, msg, person});
 
 currentIndex = 0;
 
+alert("Send message, then click NEXT");
+
 sendCurrent();
 }
 
@@ -237,7 +269,7 @@ sendCurrent();
 function sendCurrent(){
 
 if(currentIndex >= queue.length){
-alert("All messages done");
+alert("All messages completed");
 return;
 }
 
@@ -249,7 +281,7 @@ window.open(`https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`, 
 item.person.status = "Sent";
 displayTable();
 
-// save history locally
+// local history
 let record = {
 name: item.person.Name,
 phone: item.phone,
@@ -260,12 +292,20 @@ date: new Date().toLocaleString()
 historyData.push(record);
 displayHistory();
 
-// send to sheet
+// 🔥 GOOGLE SHEET SAVE
 fetch(API_URL, {
 method: "POST",
 headers: {"Content-Type": "application/json"},
-body: JSON.stringify({...record, status:"Sent"})
-});
+body: JSON.stringify({
+name: record.name,
+phone: record.phone,
+message: record.message,
+status: "Sent"
+})
+})
+.then(res => res.text())
+.then(data => console.log("Saved:", data))
+.catch(err => console.error("Error:", err));
 
 }
 
@@ -293,38 +333,9 @@ XLSX.writeFile(wb, "HR_Report.xlsx");
 }
 
 
-// ================= SEARCH =================
-function searchData(){
-let val = document.getElementById("search").value.toLowerCase();
-
-document.querySelectorAll("#table tr").forEach((row,i)=>{
-if(i===0) return;
-row.style.display = row.cells[1].innerText.toLowerCase().includes(val) ? "" : "none";
-});
-}
-
-
-// ================= SELECT =================
-function selectAll(source){
-document.querySelectorAll(".select").forEach(cb=>cb.checked=source.checked);
-}
-
-
-// ================= TEMPLATE =================
-function applyTemplate(){
-let msgs = {
-interview:"Hello {name}, You are shortlisted for interview.",
-offer:"Hello {name}, You are selected.",
-reject:"Hello {name}, Thank you for applying."
-};
-
-document.getElementById("messageBox").value = msgs[document.getElementById("template").value];
-}
-
-
 // ================= CLEAR =================
 function clearData(){
-if(confirm("Clear screen data?")){
+if(confirm("Clear all data?")){
 data=[];
 historyData=[];
 displayTable();
