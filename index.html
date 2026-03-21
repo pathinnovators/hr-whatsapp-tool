@@ -25,11 +25,11 @@ width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;
 button{background:navy;color:white;border:none;cursor:pointer;}
 button:hover{background:#001f5c;}
 
-.next-btn{
-background:green;
-}
+.next-btn{background:green;}
 
-table{width:100%;border-collapse:collapse;}
+.table-container{overflow-x:auto;}
+
+table{width:100%;border-collapse:collapse;min-width:600px;}
 th{background:navy;color:white;}
 th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 
@@ -50,11 +50,18 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 <h3>📊 Upload Excel</h3>
 <input type="file" id="upload">
 
+<h3>➕ Manual Entry</h3>
+<input type="text" id="manualName" placeholder="Candidate Name">
+<input type="text" id="manualPhone" placeholder="Mobile Number">
+<button onclick="addManual()">Add Candidate</button>
+
 <input type="text" id="search" placeholder="Search candidate..." onkeyup="searchData()">
 
 <label><input type="checkbox" onclick="selectAll(this)"> Select All</label>
 
+<div class="table-container">
 <table id="table"></table>
+</div>
 
 <h3>💬 Message</h3>
 
@@ -87,17 +94,41 @@ let workbook = XLSX.read(e.target.result, {type:'binary'});
 let sheet = workbook.Sheets[workbook.SheetNames[0]];
 let json = XLSX.utils.sheet_to_json(sheet);
 
-data = json.map(row => ({
+json.forEach(row=>{
+data.push({
 Name: row.Name || row.name || "Unknown",
 Phone: row.Phone || row.phone || "",
 status: "Pending"
-}));
+});
+});
 
 displayTable();
 };
 
 reader.readAsBinaryString(e.target.files[0]);
 });
+
+// Manual Add
+function addManual(){
+let name = document.getElementById("manualName").value.trim();
+let phone = document.getElementById("manualPhone").value.trim();
+
+if(!name || !phone){
+alert("Please enter name and phone!");
+return;
+}
+
+data.push({
+Name: name,
+Phone: phone,
+status: "Pending"
+});
+
+document.getElementById("manualName").value = "";
+document.getElementById("manualPhone").value = "";
+
+displayTable();
+}
 
 // Display Table
 function displayTable(){
@@ -189,7 +220,7 @@ alert("👉 Send message in WhatsApp, then click NEXT Candidate");
 sendCurrent();
 }
 
-// Send Current Candidate
+// Send Current
 function sendCurrent(){
 
 if(currentIndex >= queue.length){
