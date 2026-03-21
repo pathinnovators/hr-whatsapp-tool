@@ -25,6 +25,10 @@ width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;
 button{background:navy;color:white;border:none;cursor:pointer;}
 button:hover{background:#001f5c;}
 
+.next-btn{
+background:green;
+}
+
 table{width:100%;border-collapse:collapse;}
 th{background:navy;color:white;}
 th,td{border:1px solid #ddd;padding:8px;text-align:center;}
@@ -63,7 +67,8 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 <textarea id="messageBox" rows="4">Hello {name}, Welcome to Path Innovators.</textarea>
 
 <button onclick="applyTemplate()">Apply Template</button>
-<button onclick="sendBulk()">Send Selected</button>
+<button onclick="sendBulk()">📤 Start Sending</button>
+<button class="next-btn" onclick="sendNext()">➡️ Next Candidate</button>
 
 </div>
 
@@ -82,7 +87,6 @@ let workbook = XLSX.read(e.target.result, {type:'binary'});
 let sheet = workbook.Sheets[workbook.SheetNames[0]];
 let json = XLSX.utils.sheet_to_json(sheet);
 
-// Normalize columns
 data = json.map(row => ({
 Name: row.Name || row.name || "Unknown",
 Phone: row.Phone || row.phone || "",
@@ -131,7 +135,7 @@ function selectAll(source){
 document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
 }
 
-// Templates
+// Template
 function applyTemplate(){
 let type = document.getElementById("template").value;
 let msg="";
@@ -149,7 +153,7 @@ msg="Hello {name}, Thank you for applying to Path Innovators.";
 document.getElementById("messageBox").value = msg;
 }
 
-// BULK SEND (Stable Sequential Version)
+// Start Sending
 function sendBulk(){
 
 let selected = document.querySelectorAll(".select:checked");
@@ -165,7 +169,6 @@ alert("Message is empty!");
 return;
 }
 
-// Build queue
 queue = [];
 
 selected.forEach(cb=>{
@@ -180,14 +183,17 @@ queue.push({phone, msg, person});
 });
 
 currentIndex = 0;
-sendNext();
+
+alert("👉 Send message in WhatsApp, then click NEXT Candidate");
+
+sendCurrent();
 }
 
-// Send One-by-One
-function sendNext(){
+// Send Current Candidate
+function sendCurrent(){
 
 if(currentIndex >= queue.length){
-alert("All messages completed ✅");
+alert("✅ All messages completed");
 return;
 }
 
@@ -200,15 +206,12 @@ window.open(url, "_blank");
 // Update status
 item.person.status = "Sent";
 displayTable();
-
-currentIndex++;
-
-// Controlled flow to avoid popup block
-setTimeout(()=>{
-if(confirm("Click OK to send next message")){
-sendNext();
 }
-}, 800);
+
+// Next Button
+function sendNext(){
+currentIndex++;
+sendCurrent();
 }
 
 </script>
