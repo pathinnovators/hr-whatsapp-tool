@@ -99,7 +99,7 @@ let historyData = [];
 let queue = [];
 let currentIndex = 0;
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwz7-W8m6SBMZzQuLUbXs1S4PxaPDUjLUtXvZIxVm3EuVs4KIWG4mdBG2wPNa0hFWZf/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyzF_MrRHZNXPHq21T5c49BCzL0Aj6QDXDcTiNbRYDe076O0hfnWYoRjsUtB131g4F_/exec";
 
 
 // ================= FORMAT PHONE =================
