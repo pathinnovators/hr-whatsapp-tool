@@ -37,8 +37,10 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 .sent{color:green;font-weight:bold;}
 .pending{color:red;}
 
+/* Mobile */
 @media(max-width:600px){
 .header h1{font-size:18px;}
+input,button,textarea{font-size:13px;}
 }
 </style>
 </head>
@@ -51,9 +53,6 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 </div>
 
 <div class="container">
-
-<h3>📡 Load from Google Sheet</h3>
-<button onclick="loadFromSheet()">🔄 Refresh Data</button>
 
 <h3>📊 Upload Excel</h3>
 <input type="file" id="upload">
@@ -84,7 +83,7 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 <button onclick="applyTemplate()">Apply Template</button>
 <button onclick="sendBulk()">📤 Start Sending</button>
 <button class="next-btn" onclick="sendNext()">➡️ Next Candidate</button>
-<button class="clear-btn" onclick="clearData()">🗑 Clear Screen Data</button>
+<button class="clear-btn" onclick="clearData()">🗑 Clear Data</button>
 
 </div>
 
@@ -94,48 +93,22 @@ let data = [];
 let queue = [];
 let currentIndex = 0;
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwz7-W8m6SBMZzQuLUbXs1S4PxaPDUjLUtXvZIxVm3EuVs4KIWG4mdBG2wPNa0hFWZf/exec";
+// 🔹 LOAD DATA FROM LOCAL STORAGE
+window.onload = function(){
+let saved = localStorage.getItem("candidates");
 
-
-// ================= COMMON FORMAT FUNCTION =================
-function formatPhone(phone){
-phone = phone.toString().replace(/[^0-9]/g,"");
-if(phone.length === 10){
-phone = "91" + phone;
-}
-return phone;
-}
-
-
-// ================= GOOGLE SHEET =================
-async function loadFromSheet(){
-try{
-document.getElementById("table").innerHTML = "<tr><td>Loading...</td></tr>";
-
-let res = await fetch(API_URL);
-let json = await res.json();
-
-json.forEach(row=>{
-let phone = formatPhone(row.Phone);
-
-if(!data.some(d => d.Phone === phone)){
-data.push({
-Name: row.Name,
-Phone: phone,
-status: row.Status || "Pending"
-});
-}
-});
-
+if(saved){
+data = JSON.parse(saved);
 displayTable();
 }
-catch(err){
-alert("Error loading data");
-}
 }
 
+// 🔹 SAVE FUNCTION
+function saveData(){
+localStorage.setItem("candidates", JSON.stringify(data));
+}
 
-// ================= EXCEL UPLOAD =================
+// Upload Excel
 document.getElementById('upload').addEventListener('change', function(e){
 let reader = new FileReader();
 
@@ -145,37 +118,33 @@ let sheet = workbook.Sheets[workbook.SheetNames[0]];
 let json = XLSX.utils.sheet_to_json(sheet);
 
 json.forEach(row=>{
-let phone = formatPhone(row.Phone || row.phone);
-
-if(!data.some(d => d.Phone === phone)){
 data.push({
 Name: row.Name || row.name || "Unknown",
-Phone: phone,
+Phone: row.Phone || row.phone || "",
 status: "Pending"
 });
-}
 });
 
 displayTable();
+saveData();
 };
 
 reader.readAsBinaryString(e.target.files[0]);
 });
 
-
-// ================= MANUAL =================
+// Manual Add
 function addManual(){
 let name = document.getElementById("manualName").value.trim();
-let phone = formatPhone(document.getElementById("manualPhone").value);
+let phone = document.getElementById("manualPhone").value.trim();
 
 if(!name || !phone){
-alert("Enter name & phone");
+alert("Please enter name and phone!");
 return;
 }
 
-if(data.some(d => d.Phone === phone)){
-alert("Candidate already exists!");
-return;
+// Auto add +91 if missing
+if(phone.length === 10){
+phone = "91" + phone;
 }
 
 data.push({
@@ -184,14 +153,14 @@ Phone: phone,
 status: "Pending"
 });
 
-displayTable();
-
 document.getElementById("manualName").value = "";
 document.getElementById("manualPhone").value = "";
+
+displayTable();
+saveData();
 }
 
-
-// ================= DISPLAY =================
+// Display Table
 function displayTable(){
 let table = document.getElementById("table");
 
@@ -208,44 +177,56 @@ table.innerHTML += `
 });
 }
 
-
-// ================= SEARCH =================
+// Search
 function searchData(){
 let value = document.getElementById("search").value.toLowerCase();
 
-document.querySelectorAll("#table tr").forEach((row,i)=>{
+let rows = document.querySelectorAll("#table tr");
+
+rows.forEach((row,i)=>{
 if(i===0) return;
-row.style.display = row.cells[1].innerText.toLowerCase().includes(value) ? "" : "none";
+
+let name = row.cells[1].innerText.toLowerCase();
+row.style.display = name.includes(value) ? "" : "none";
 });
 }
 
-
-// ================= SELECT =================
+// Select All
 function selectAll(source){
 document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
 }
 
-
-// ================= TEMPLATE =================
+// Template
 function applyTemplate(){
-let msgs = {
-interview: "Hello {name}, You are shortlisted for an interview at Path Innovators.",
-offer: "Hello {name}, Congratulations! You are selected at Path Innovators.",
-reject: "Hello {name}, Thank you for applying to Path Innovators."
-};
+let type = document.getElementById("template").value;
+let msg="";
 
-document.getElementById("messageBox").value = msgs[document.getElementById("template").value];
+if(type==="interview"){
+msg="Hello {name}, You are shortlisted for an interview at Path Innovators.";
+}
+else if(type==="offer"){
+msg="Hello {name}, Congratulations! You are selected at Path Innovators.";
+}
+else{
+msg="Hello {name}, Thank you for applying to Path Innovators.";
 }
 
+document.getElementById("messageBox").value = msg;
+}
 
-// ================= SEND =================
+// Start Sending
 function sendBulk(){
 
 let selected = document.querySelectorAll(".select:checked");
 let template = document.getElementById("messageBox").value;
 
 if(selected.length === 0){
-alert("Select candidates");
+alert("Please select candidates!");
+return;
+}
+
+if(!template){
+alert("Message is empty!");
 return;
 }
 
@@ -253,64 +234,56 @@ queue = [];
 
 selected.forEach(cb=>{
 let person = data[cb.dataset.index];
+
+let phone = person.Phone.toString().replace(/[^0-9]/g,"");
+
+if(phone){
 let msg = template.replace("{name}", person.Name);
-queue.push({phone: person.Phone, msg, person});
+queue.push({phone, msg, person});
+}
 });
 
 currentIndex = 0;
 
-alert("Send in WhatsApp, then click NEXT");
+alert("👉 Send message in WhatsApp, then click NEXT Candidate");
 
 sendCurrent();
 }
 
-
+// Send Current
 function sendCurrent(){
 
 if(currentIndex >= queue.length){
-alert("All messages completed");
+alert("✅ All messages completed");
 return;
 }
 
 let item = queue[currentIndex];
 
-window.open(`https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`, "_blank");
+let url = `https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`;
 
-// UI update
+window.open(url, "_blank");
+
+// Update status
 item.person.status = "Sent";
 displayTable();
-
-// API update
-fetch(API_URL, {
-method: "POST",
-headers: {"Content-Type": "application/json"},
-body: JSON.stringify({
-name: item.person.Name,
-phone: item.phone,
-message: item.msg,
-status: "Sent"
-})
-});
+saveData();
 }
 
-
+// Next Button
 function sendNext(){
 currentIndex++;
 sendCurrent();
 }
 
-
-// ================= CLEAR =================
+// Clear Data
 function clearData(){
-if(confirm("Clear screen data?")){
+if(confirm("Are you sure you want to delete all data?")){
+localStorage.removeItem("candidates");
 data = [];
 displayTable();
 }
 }
-
-
-// AUTO LOAD
-window.onload = loadFromSheet;
 
 </script>
 
