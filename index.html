@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;}
 th{background:navy;color:white;}
 th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 
-.sent{color:green;}
+.sent{color:green;font-weight:bold;}
 .pending{color:red;}
 </style>
 </head>
@@ -43,16 +43,16 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 
 <div class="container">
 
-<h3>Upload Excel</h3>
+<h3>📊 Upload Excel</h3>
 <input type="file" id="upload">
 
-<input type="text" id="search" placeholder="Search..." onkeyup="searchData()">
+<input type="text" id="search" placeholder="Search candidate..." onkeyup="searchData()">
 
 <label><input type="checkbox" onclick="selectAll(this)"> Select All</label>
 
 <table id="table"></table>
 
-<h3>Message</h3>
+<h3>💬 Message</h3>
 
 <select id="template">
 <option value="interview">Interview</option>
@@ -68,8 +68,12 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 </div>
 
 <script>
-let data = [];
 
+let data = [];
+let queue = [];
+let currentIndex = 0;
+
+// Upload Excel
 document.getElementById('upload').addEventListener('change', function(e){
 let reader = new FileReader();
 
@@ -78,7 +82,7 @@ let workbook = XLSX.read(e.target.result, {type:'binary'});
 let sheet = workbook.Sheets[workbook.SheetNames[0]];
 let json = XLSX.utils.sheet_to_json(sheet);
 
-// Normalize data safely
+// Normalize columns
 data = json.map(row => ({
 Name: row.Name || row.name || "Unknown",
 Phone: row.Phone || row.phone || "",
@@ -91,6 +95,7 @@ displayTable();
 reader.readAsBinaryString(e.target.files[0]);
 });
 
+// Display Table
 function displayTable(){
 let table = document.getElementById("table");
 
@@ -107,6 +112,7 @@ table.innerHTML += `
 });
 }
 
+// Search
 function searchData(){
 let value = document.getElementById("search").value.toLowerCase();
 
@@ -120,10 +126,12 @@ row.style.display = name.includes(value) ? "" : "none";
 });
 }
 
+// Select All
 function selectAll(source){
 document.querySelectorAll(".select").forEach(cb => cb.checked = source.checked);
 }
 
+// Templates
 function applyTemplate(){
 let type = document.getElementById("template").value;
 let msg="";
@@ -135,40 +143,74 @@ else if(type==="offer"){
 msg="Hello {name}, Congratulations! You are selected at Path Innovators.";
 }
 else{
-msg="Hello {name}, Thank you for applying.";
+msg="Hello {name}, Thank you for applying to Path Innovators.";
 }
 
 document.getElementById("messageBox").value = msg;
 }
 
+// BULK SEND (Stable Sequential Version)
 function sendBulk(){
+
 let selected = document.querySelectorAll(".select:checked");
 let template = document.getElementById("messageBox").value;
+
+if(selected.length === 0){
+alert("Please select candidates!");
+return;
+}
 
 if(!template){
 alert("Message is empty!");
 return;
 }
 
-selected.forEach((cb,i)=>{
+// Build queue
+queue = [];
+
+selected.forEach(cb=>{
 let person = data[cb.dataset.index];
 
 let phone = person.Phone.toString().replace(/[^0-9]/g,"");
 
-if(!phone){
-alert("Invalid phone for " + person.Name);
+if(phone){
+let msg = template.replace("{name}", person.Name);
+queue.push({phone, msg, person});
+}
+});
+
+currentIndex = 0;
+sendNext();
+}
+
+// Send One-by-One
+function sendNext(){
+
+if(currentIndex >= queue.length){
+alert("All messages completed ✅");
 return;
 }
 
-let msg = template.replace("{name}", person.Name);
+let item = queue[currentIndex];
 
-setTimeout(()=>{
-window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-person.status = "Sent";
+let url = `https://wa.me/${item.phone}?text=${encodeURIComponent(item.msg)}`;
+
+window.open(url, "_blank");
+
+// Update status
+item.person.status = "Sent";
 displayTable();
-}, i * 1500);
-});
+
+currentIndex++;
+
+// Controlled flow to avoid popup block
+setTimeout(()=>{
+if(confirm("Click OK to send next message")){
+sendNext();
 }
+}, 800);
+}
+
 </script>
 
 </body>
