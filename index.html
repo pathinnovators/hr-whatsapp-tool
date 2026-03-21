@@ -16,25 +16,32 @@ body{margin:0;background:#f4f6f9;}
 .header img{width:60px;height:60px;border-radius:50%;}
 .header h1{margin:5px 0;font-size:22px;}
 
-.container{max-width:1000px;margin:15px auto;background:white;padding:15px;border-radius:12px;}
+.container{max-width:1000px;margin:10px auto;background:white;padding:15px;border-radius:12px;}
 
 input,select,button,textarea{
-width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;
+width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;font-size:14px;
 }
 
 button{background:navy;color:white;border:none;cursor:pointer;}
 button:hover{background:#001f5c;}
 
 .next-btn{background:green;}
+.clear-btn{background:red;}
 
 .table-container{overflow-x:auto;}
 
 table{width:100%;border-collapse:collapse;min-width:600px;}
 th{background:navy;color:white;}
-th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 
 .sent{color:green;font-weight:bold;}
 .pending{color:red;}
+
+/* Mobile */
+@media(max-width:600px){
+.header h1{font-size:18px;}
+input,button,textarea{font-size:13px;}
+}
 </style>
 </head>
 
@@ -76,6 +83,7 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 <button onclick="applyTemplate()">Apply Template</button>
 <button onclick="sendBulk()">📤 Start Sending</button>
 <button class="next-btn" onclick="sendNext()">➡️ Next Candidate</button>
+<button class="clear-btn" onclick="clearData()">🗑 Clear Data</button>
 
 </div>
 
@@ -84,6 +92,21 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 let data = [];
 let queue = [];
 let currentIndex = 0;
+
+// 🔹 LOAD DATA FROM LOCAL STORAGE
+window.onload = function(){
+let saved = localStorage.getItem("candidates");
+
+if(saved){
+data = JSON.parse(saved);
+displayTable();
+}
+}
+
+// 🔹 SAVE FUNCTION
+function saveData(){
+localStorage.setItem("candidates", JSON.stringify(data));
+}
 
 // Upload Excel
 document.getElementById('upload').addEventListener('change', function(e){
@@ -103,6 +126,7 @@ status: "Pending"
 });
 
 displayTable();
+saveData();
 };
 
 reader.readAsBinaryString(e.target.files[0]);
@@ -118,6 +142,11 @@ alert("Please enter name and phone!");
 return;
 }
 
+// Auto add +91 if missing
+if(phone.length === 10){
+phone = "91" + phone;
+}
+
 data.push({
 Name: name,
 Phone: phone,
@@ -128,6 +157,7 @@ document.getElementById("manualName").value = "";
 document.getElementById("manualPhone").value = "";
 
 displayTable();
+saveData();
 }
 
 // Display Table
@@ -237,12 +267,22 @@ window.open(url, "_blank");
 // Update status
 item.person.status = "Sent";
 displayTable();
+saveData();
 }
 
 // Next Button
 function sendNext(){
 currentIndex++;
 sendCurrent();
+}
+
+// Clear Data
+function clearData(){
+if(confirm("Are you sure you want to delete all data?")){
+localStorage.removeItem("candidates");
+data = [];
+displayTable();
+}
 }
 
 </script>
